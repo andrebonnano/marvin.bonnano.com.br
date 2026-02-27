@@ -1,0 +1,42 @@
+name: Deploy marvin-site
+
+on:
+  push:
+    branches:
+      - desenv
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # Se precisar de build (ex.: npm/yarn), adicionar aqui antes do deploy.
+      # Exemplo (comente/remova se não usar):
+      # - name: Build
+      #   run: |
+      #     npm ci
+      #     npm run build
+
+      - name: Selecionar destino (dev ou prod)
+        id: env
+        run: |
+          BRANCH="${GITHUB_REF##*/}"
+          if [ "$BRANCH" = "desenv" ]; then
+            echo "path=/opt/projetos/marvin-site/dev" >> $GITHUB_OUTPUT
+          else
+            echo "path=/opt/projetos/marvin-site/prod" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy via rsync para VPS
+        uses: burnett01/rsync-deploy@v2
+        with:
+          switches: -avz --delete
+          path: ./
+          remote_path: ${{ steps.env.outputs.path }}
+          remote_host: 46.202.146.95
+          remote_user: bonnano
+          remote_key: ${{ secrets.VPS_SSH_KEY }}
